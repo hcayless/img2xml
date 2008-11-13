@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>Linking Text and Image</title>
+<!-- metadata -->
+<meta name="generator" content="S5" />
+<meta name="version" content="S5 1.1" />
+<meta name="presdate" content="20050728" />
+<meta name="author" content="Eric A. Meyer" />
+<meta name="company" content="Complex Spiral Consulting" />
+<!-- configuration parameters -->
+<meta name="defaultView" content="slideshow" />
+<meta name="controlVis" content="hidden" />
+<!-- style sheet links -->
+<link rel="stylesheet" href="ui/default/slides.css" type="text/css" media="projection" id="slideProj" />
+<link rel="stylesheet" href="ui/default/outline.css" type="text/css" media="screen" id="outlineStyle" />
+<link rel="stylesheet" href="ui/default/print.css" type="text/css" media="print" id="slidePrint" />
+<link rel="stylesheet" href="ui/default/opera.css" type="text/css" media="projection" id="operaFix" />
+<!-- S5 JS -->
+<script src="ui/default/slides.js" type="text/javascript"></script>
+</head>
+<body>
+
+<div class="layout">
+<div id="controls"><!-- DO NOT EDIT --></div>
+<div id="currentSlide"><!-- DO NOT EDIT --></div>
+<div id="header"></div>
+<div id="footer">
+<h1><span style="font-family:'Snell Roundhand';font-size:16pt">Balisage</span> August 13, 2008</h1>
+<h2>Linking Page Images to Transcriptions with SVG</h2>
+</div>
+
+</div>
+
+
+<div class="presentation">
+
+<div class="slide">
+<h1>Linking Page Images to Transcriptions with SVG</h1>
+<h3>Hugh A. Cayless</h3>
+<h4>Head, R&amp;D Group, Carolina Digital Library and Archives</h4>
+</div>
+
+
+<div class="slide">
+<h1>So, what's the point of this?</h1>
+<ul>
+<li>Lots of chat this summer about text-image linking</li>
+<li>Moderate to gigantic manuscript digitization projects on my horizon</li>
+<li>What's the state of the tools for:
+  <ul>
+    <li>analysing images?</li>
+    <li>linking image to text?</li>
+    <li>displaying and manipulating the results?</li>
+  </ul>
+</li>
+</ul>
+<div class="handout">
+[any material that should appear in print but not on the slide]
+</div>
+</div>
+
+<div class="slide">
+  <h1>Desiderata</h1>
+  <ul>
+    <li>the process should be automated (as much as possible)</li>
+    <li>the result should scale down as much as possible: from line to word/letter (or at least contiguous text segment)</li>
+    <li>should support linking by URI</li>
+    <li>should be able to be manipulated in arbitrary ways</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Goals</h1>
+  <ul>
+    <li>Create an SVG overlay of the manuscript page image</li>
+    <li>Analyse the structure of the SVG document to detect lines, etc.</li>
+    <li>Link the groups so produced to structures in a TEI transcription</li>
+    <li>Display the results in a usable GUI</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Method</h1>
+  <ul>
+    <li>Turn the image into an SVG</li>
+    <li>Organise the paths into groups</li>
+    <li>Link the ids of the paths to ids of structures in the transcript</li>
+    <li>Serialise the results of the analysis into a form that can be displayed and worked with</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Example: papyrus</h1>
+  <img src="files/P.Mich.inv._3088.jpg" width="700"/>
+</div>
+
+<div class="slide">
+  <h1>Toolchain: prep</h1>
+  <ul>
+    <li>potrace (<a href="http://potrace.sf.net">http://potrace.sf.net</a>)
+      <ul>
+        <li>converts a bitmap into vector graphics (including SVG)</li>
+      </ul>
+    </li>
+    <li>ImageMagick (<a href="http://www.imagemagick.org/script/index.php">http://www.imagemagick.org/</a>)
+      <ul>
+        <li>used to preprocess the image (converting JPEG to bitmap, e.g.)</li>
+      </ul>
+    <li>Inkscape (<a href="http://www.inkscape.org/">http://www.inkscape.org/</a>)
+      <ul>
+        <li>SVG graphical editor, used from the command line to process the SVG produced by potrace</li>
+      </ul>
+    <li>XSLT (used for cleanup)</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>papyrus image as SVG</h1>
+  <embed src="files/P.Mich.inv._3088-plain.svg" width="700" height="600"/>
+</div>
+
+<div class="slide">
+  <h1>Toolchain: analysis</h1>
+  <ul>
+    <li>Python
+      <ul>
+        <li>lxml - ElementTree</li>
+        <li>numpy</li>
+      </ul>
+    </li>
+    <li>the script reads in the SVG produced by potrace and filtered through Inkscape, does some filtering, detects the lines, then serializes the results back to SVG and Javascript</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Example: analysed SVG</h1>
+  <embed src="files/P.Mich.inv.3088.new.svg" width="700" height="600"/>
+</div>
+
+<div class="slide">
+  <h1>Toolchain: display</h1>
+  <ul>
+    <li>Javascript:
+      <ul>
+        <li>OpenLayers
+          <ul>
+            <li>hacked (I use the term advisedly) to accomodate paths and groups of paths</li>
+          </ul>
+        </li>
+        <li>jQuery</li>
+      </ul>
+    </li>
+    <li>XSLT (to turn the TEI transcription into HTML)</li>
+</div>
+
+<div class="slide">
+  <h1>Example</h1>
+  <iframe src="viewer.html" width="975" height="600"></iframe>
+</div>
+
+<div class="slide">
+  <h1>What's next?</h1>
+  <ul>
+    <li>Lots of questions:
+      <ul>
+        <li>How much can be automatic?</li>
+        <li>How deeply can we analyse?</li>
+        <li>How best to link?</li>
+      </ul>
+    </li>
+    <li>Need to refine and test on lots more content</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Automation</h1>
+  <ul>
+    <li>Can we compute the right black/white cutoff point?</li>
+    <li>How much, and what kind of image preprocessing should be done?</li>
+    <li>What's the best way of throwing out extraneous paths?</li>
+    <li>Can the linking be automated?</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Analysis</h1>
+  <ul>
+    <li>Gosh, I've made rectangles around lines.</li>
+    <li>Structure is a problem:<br/>
+      <embed src="files/hamakai.svg" width="600" height="300"/></li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Linking</h1>
+  <ul>
+    <li>The demo version uses JSON, basically a pair of hash maps, id -> list of ids</li>
+    <li>TEI has ways of doing this, but is that the right place for it?</li>
+    <li>linkbases?</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h1>Conclusions</h1>
+  <ul>
+    <li>Method seems promising</li>
+    <li>Tools are in an advanced enough state to do really useful work</li>
+    <li>References:
+      <ul>
+        <li>P. Mich. 1.78 at <a href="http://www.perseus.tufts.edu/cgi-bin/ptext?doc=Perseus%3Atext%3A1999.05.0163;layout=;query=1%3A78;loc=78">Perseus</a></li>
+        <li>P. Mich. 1.78 in <a href="http://wwwapp.cc.columbia.edu/ldpd/app/apis/search?mode=search&institution=michigan&pubnum_coll=P.Mich.&pubnum_vol=1&pubnum_page=78&sort=date&resPerPage=25&action=search&p=1">APIS</a></li>
+        <li>Letter from John and Ebenezer Pettigrew to Charles Pettigrew at <a href="http://docsouth.unc.edu/true/mss01-01/mss01-01.html">Documenting the American South</a></li>
+      </ul>
+    </li>
+  </ul>
+</div>
+
+</body>
+</html>

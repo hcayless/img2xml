@@ -1,0 +1,268 @@
+<html> 
+<head> 
+    <script src="../../lib/OpenLayers.js"></script> 
+    <script type="text/javascript">
+
+    var text =
+        '<?xml version="1.0"?>' + 
+        '<ol:root xmlns="http://namespace.default.net" ' +
+                 'xmlns:ol="http://namespace.openlayers.org" ' + 
+                 'xmlns:ta="http://namespace.testattribute.net">' +
+            '<ol:child ta:attribute="value1" ' +
+                      'attribute="value2">' +
+                'junk1' +
+            '<' + '/ol:child>' +
+            '<ol:child>junk2<' + '/ol:child>' +
+            '<ol:child>junk3<' + '/ol:child>' +
+            '<element>junk4<' + '/element>' + 
+            '<ol:element>junk5<' + '/ol:element>' + 
+            '<ol:p>' +
+                '<ol:a>junk' +
+                '<' + '/ol:a>' + 
+                '<ol:b>junk' +
+                '<' + '/ol:b>' + 
+                '<ol:a>junk' +
+                '<' + '/ol:a>' + 
+            '<' + '/ol:p>' + 
+        '<' + '/ol:root>';
+
+    function test_Format_XML_constructor(t) { 
+        t.plan(5); 
+         
+        var options = {'foo': 'bar'}; 
+        var format = new OpenLayers.Format.XML(options); 
+        t.ok(format instanceof OpenLayers.Format.XML, 
+             "new OpenLayers.Format.XML returns object" ); 
+        t.eq(format.foo, "bar", "constructor sets options correctly"); 
+        t.eq(typeof format.read, "function", "format has a read function"); 
+        t.eq(typeof format.write, "function", "format has a write function");
+
+        t.ok(!window.ActiveXObject || format.xmldom, "browsers with activeX must have xmldom");
+    }
+
+    function test_Format_XML_read(t) {
+        
+        var format = new OpenLayers.Format.XML();
+        t.plan(format.xmldom ? 10 : 9);
+
+        var doc = format.read(text);
+        t.eq(doc.nodeType, 9,
+             "doc has the correct node type");
+        t.eq(doc.nodeName, "#document",
+             "doc has the correct node name");
+        t.ok(doc.documentElement,
+             "ok to access doc.documentElement");
+        t.xml_eq(doc.documentElement, text,
+                 "doc.documentElement correctly read");
+        
+        // read can also be called on the prototype directly
+        doc = OpenLayers.Format.XML.prototype.read(text);
+        t.eq(doc.nodeType, 9,
+             "doc has the correct node type");
+        t.eq(doc.nodeName, "#document",
+             "doc has the correct node name");
+        t.ok(doc.documentElement,
+             "ok to access doc.documentElement");
+        t.xml_eq(doc.documentElement, text,
+                 "doc.documentElement correctly read");
+        
+        // where appropriate, make sure doc is loaded into xmldom property
+        if(format.xmldom) {
+            t.xml_eq(format.xmldom.documentElement, text,
+                     "xmldom.documentElement contains equivalent xml");
+        }
+        
+        // test equivalence with different namespace alias
+        var pre1 = 
+            "<pre1:parent xmlns:pre1='http://namespace'>" +
+                "<pre1:child1>value2</pre1:child1>" +
+                "<pre1:child2 pre1:attr1='foo'>value2</pre1:child2>" +
+                "<pre1:child3 chicken:attr='hot' xmlns:chicken='http://soup'/>" +
+            "</pre1:parent>";
+        var pre2 = 
+            "<pre2:parent xmlns:pre2='http://namespace'>" +
+                "<pre2:child1>value2</pre2:child1>" +
+                "<pre2:child2 pre2:attr1='foo'>value2</pre2:child2>" +
+                "<pre2:child3 pea:attr='hot' xmlns:pea='http://soup'/>" +
+            "</pre2:parent>";
+        var doc1 = format.read(pre1);
+        t.xml_eq(doc1.documentElement, pre2, "read correctly sets namespaces");
+        
+    }
+
+    function test_Format_XML_write(t) {
+        t.plan(2);
+
+        var format = new OpenLayers.Format.XML();
+        var doc = format.read(text);
+        var out = format.write(doc);
+        out = out.replace(/[\r\n]/g, '');
+        out = out.replace( /<\?.*\?>/, '')
+        var expected = text.replace(/<\?.*\?>/, '')
+        t.eq(expected, out,
+             "correctly writes an XML DOM doc");
+        var out = format.write(
+          format.getElementsByTagNameNS(doc,
+           "http://namespace.openlayers.org","root")[0]);
+        out = out.replace(/[\r\n]/g, '');
+        out = out.replace( /<\?.*\?>/, '')
+        t.eq(out, expected,
+             "correctly writes an XML DOM node");
+    }
+
+    function test_Format_XML_createElementNS(t) {
+        t.plan(5);
+
+        var format = new OpenLayers.Format.XML();
+        var uri = "http://foo.com";
+        var prefix = "foo";
+        var localName = "bar";
+        var qualifiedName = prefix + ":" + name;
+        var node = format.createElementNS(uri, qualifiedName);
+        t.eq(node.nodeType, 1,
+             "node has correct type");
+        t.eq(node.nodeName, qualifiedName,
+             "node has correct qualified name");
+        t.eq(node.prefix, prefix,
+             "node has correct prefix");
+        t.eq(node.namespaceURI, uri,
+             "node has correct namespace uri");
+        
+        var doc = format.read(text);
+        if (doc.importNode) {
+            node = doc.importNode(node, true);
+        }    
+        t.ok(doc.documentElement.appendChild(node),
+             "node can be appended to a doc root");
+    }
+
+    function test_Format_XML_createTextNode(t) {
+        t.plan(4);
+
+        var format = new OpenLayers.Format.XML();
+        var value = Math.random().toString();
+        var node = format.createTextNode(value);
+        t.eq(node.nodeType, 3,
+             "node has correct type");
+        t.eq(node.nodeName, "#text",
+             "node has correct name");
+        t.eq(node.nodeValue, value,
+             "node has correct value");
+        
+        var doc = format.read(text);
+        if (doc.importNode) {
+            node = doc.importNode(node, true);
+        }    
+        t.ok(doc.documentElement.appendChild(node),
+             "node can be appended to a doc root");
+    }
+
+    function test_Format_XML_getElementsByTagNameNS(t) {
+        t.plan(5);
+
+        var format = new OpenLayers.Format.XML();
+        var olUri = "http://namespace.openlayers.org";
+        var name = "child";
+        var doc = format.read(text);
+        var nodes = format.getElementsByTagNameNS(doc.documentElement,
+                                                  olUri, name);
+        t.eq(nodes.length, 3,
+             "gets correct number of nodes");
+        var qualifiedName = nodes[0].prefix + ":" + name;
+        t.eq(nodes[0].nodeName, qualifiedName,
+             "first node has correct qualified name");
+        
+        var defaultUri = "http://namespace.default.net";
+        name = "element";
+        nodes = format.getElementsByTagNameNS(doc.documentElement,
+                                                  defaultUri, name);
+        t.eq(nodes.length, 1,
+             "gets correct number of nodes in default namespace");
+        
+        var pList = format.getElementsByTagNameNS(doc.documentElement,
+                                                  olUri, "p");
+        t.eq(pList.length, 1, "got one ol:p element");
+        var p = pList[0];
+        
+        var aList = format.getElementsByTagNameNS(p, olUri, "a");
+        t.eq(aList.length, 2, "got two child ol:a elements");
+        
+        
+        
+    }
+
+    function test_Format_XML_getAttributeNodeNS(t) {
+        t.plan(5);
+
+        var format = new OpenLayers.Format.XML();
+        var doc = format.read(text);
+        var olUri = "http://namespace.openlayers.org";
+        var taUri = "http://namespace.testattribute.net";
+        var localNodeName = "child";
+        var localAttrName = "attribute";
+        var nodes = format.getElementsByTagNameNS(doc.documentElement,
+                                                  olUri, localNodeName);
+        var attributeNode = format.getAttributeNodeNS(nodes[0],
+                                                      taUri, localAttrName);
+        var qualifiedName = attributeNode.prefix + ":" + localAttrName;
+
+        t.ok(attributeNode,
+             "returns non-null value");
+        t.eq(attributeNode.nodeType, 2,
+             "attribute node has correct type");
+        t.eq(attributeNode.nodeName, qualifiedName,
+             "attribute node has correct qualified name");
+        t.eq(attributeNode.nodeValue, "value1",
+             "attribute node has correct value");
+        
+        var nullAttribute = format.getAttributeNodeNS(nodes[0],
+                                                      taUri, "nothing");
+        t.ok(nullAttribute === null,
+             "returns null for nonexistent attribute");
+    }
+
+    function test_Format_XML_getAttributeNS(t) {
+        t.plan(2);
+
+        var format = new OpenLayers.Format.XML();
+        var doc = format.read(text);
+        var olUri = "http://namespace.openlayers.org";
+        var taUri = "http://namespace.testattribute.net";
+        var localNodeName = "child";
+        var localAttrName = "attribute";
+        var nodes = format.getElementsByTagNameNS(doc.documentElement,
+                                                  olUri, localNodeName);
+        var attributeValue = format.getAttributeNS(nodes[0],
+                                                   taUri, localAttrName);
+        t.eq(attributeValue, "value1",
+             "got correct attribute value");
+        
+        var emptyValue = format.getAttributeNS(nodes[0],
+                                              taUri, "nothing");
+        t.ok(emptyValue === "",
+             "returns empty string for nonexistent attributes");
+    }
+
+    function test_Format_XML_hasAttributeNS(t) {
+        t.plan(2);
+
+        var format = new OpenLayers.Format.XML();
+        var doc = format.read(text);
+        var olUri = "http://namespace.openlayers.org";
+        var taUri = "http://namespace.testattribute.net";
+        var localNodeName = "child";
+        var localAttrName = "attribute";
+        var nodes = format.getElementsByTagNameNS(doc.documentElement,
+                                                  olUri, localNodeName);
+        var found = format.hasAttributeNS(nodes[0], taUri, localAttrName);
+        t.ok(found === true, "returns true for good attribute");
+        
+        found = format.hasAttributeNS(nodes[0], taUri, "nothing");
+        t.ok(found === false, "returns false for bad attribute");
+    }
+
+    </script> 
+</head> 
+<body> 
+</body> 
+</html> 
