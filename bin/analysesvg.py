@@ -415,7 +415,7 @@ def get_lines(rectangles, result, overlap):
       remainder.append(r)
   result.append(group)
   if (len(remainder) > 0) & (len(remainder) < len(rectangles)):
-    get_lines(remainder, result)
+    get_lines(remainder, result, overlap)
   
 def get_words(rects, result):
   rect = rects[0]
@@ -465,6 +465,8 @@ def main(argv=None):
     
     
     file = args[0]
+    if not 'output' in locals():
+      output = file
     svg = etree.parse(file)
     s = SVG(svg)
     polygons = []
@@ -498,7 +500,7 @@ def main(argv=None):
     #print areas
     #print rectangles
     
-    rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (2 *numpy.std(areas))), numpy.max(areas)  )
+    rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (2 *numpy.std(areas))), numpy.max(areas) - 1  )
     #rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (10 * numpy.std(areas))), numpy.max(areas)  )
     rectangles = sort(rectangles, 'x')
     rectangles = sort(rectangles, 'y')
@@ -533,11 +535,11 @@ def main(argv=None):
       s.add_rectangle(group.boundingrect, 'yellow', '0.3')
       s.add_group(group)
       #s.add_hline("%s" % group.baseline(), "%s" % group.boundingrect.tl.x, "%s" % group.boundingrect.tr.x)
-      words = []
-      shapes = sort(group.shapes, 'x')
-      get_words(shapes, words)
-      for word in words:
-        s.add_rectangle(word.boundingrect, 'green', '0.2')
+      #words = []
+      #shapes = sort(group.shapes, 'x')
+      #get_words(shapes, words)
+      #for word in words:
+      #  s.add_rectangle(word.boundingrect, 'green', '0.2')
         
     s.add_image(image)
     f = open(output, 'w')
