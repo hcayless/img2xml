@@ -128,13 +128,10 @@ class Rectangle:
     br1 = self.br
     br2 = rect.br
     top = float(self.tl.y)
-
+    bottom = float(self.br.y)
     left = float(tl1.x)
     if left > float(tl2.x):
       left = float(tl2.x)
-    bottom = float(br1.y)
-    if bottom < float(br2.y):
-      bottom = float(br2.y)
     right = float(br1.x)
     if right < float(br2.x):
       right = float(br2.x)
@@ -170,7 +167,6 @@ class Group:
       self.boundingrect.merge(rect)
     else:
       self.boundingrect.mergehoriz(rect)
-    
   
 
 class SVG:
@@ -268,6 +264,45 @@ class SVG:
       else:
         result += point
     return result
+    
+  # returns a list of path information
+  def analysepaths(self):
+    polygons = []
+    for pathdata in self.doc.xpath("//svg:path", namespaces=self.nss):
+      path = pathdata.xpath("@d")[0].split(' ')
+      index = 0
+      polygon = []
+      current = ""
+      for p in path:
+        if p == 'm':
+          if index == 0:
+            polygon.append(path[index + 1])
+            current = path[index + 1]
+          else:
+            current = absoluteCoords(path[index + 1], current)
+            polygon.append(current)
+        if p == 'M':
+          polygon.append(path[index + 1])
+          current = path[index + 1]
+        if p == 'l':
+          current = absoluteCoords(path[index + 1], current)
+          polygon.append(current)
+        if p == 'L':
+          polygon.append(path[index + 1])
+        if p == 'c':
+          current = absoluteCoords(path[index + 1], current)
+          polygon.append(current)
+          current = absoluteCoords(path[index + 2], current)
+          polygon.append(current)
+          current = absoluteCoords(path[index + 3], current)
+          polygon.append(current)
+        if p == 'C':
+          polygon.append(path[index + 1])
+          polygon.append(path[index + 2])
+          polygon.append(path[index + 3])
+        index = index + 1
+      polygons.append((pathdata.xpath("@id")[0], polygon))
+    return polygons
     
 class JS:
   
@@ -534,41 +569,8 @@ def main(argv=None):
       output = file
     svg = etree.parse(file)
     s = SVG(svg)
-    polygons = []
-    for pathdata in svg.xpath("//svg:path", namespaces={'svg': 'http://www.w3.org/2000/svg'}):
-      path = pathdata.xpath("@d")[0].split(' ')
-      index = 0
-      polygon = []
-      current = ""
-      for p in path:
-        if p == 'm':
-          if index == 0:
-            polygon.append(path[index + 1])
-            current = path[index + 1]
-          else:
-            current = absoluteCoords(path[index + 1], current)
-            polygon.append(current)
-        if p == 'M':
-          polygon.append(path[index + 1])
-          current = path[index + 1]
-        if p == 'l':
-          current = absoluteCoords(path[index + 1], current)
-          polygon.append(current)
-        if p == 'L':
-          polygon.append(path[index + 1])
-        if p == 'c':
-          current = absoluteCoords(path[index + 1], current)
-          polygon.append(current)
-          current = absoluteCoords(path[index + 2], current)
-          polygon.append(current)
-          current = absoluteCoords(path[index + 3], current)
-          polygon.append(current)
-        if p == 'C':
-          polygon.append(path[index + 1])
-          polygon.append(path[index + 2])
-          polygon.append(path[index + 3])
-        index = index + 1
-      polygons.append((pathdata.xpath("@id")[0], polygon))
+    
+    polygons = s.analysepaths()
       
     rectangles = []
     areas = []
