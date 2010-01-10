@@ -120,6 +120,28 @@ class Rectangle:
       self.tl = Point(left, top)
       self.br = Point(right, bottom)
       self.bl = Point(left, bottom)
+
+  # merge the rectangle horizontally only
+  def mergehoriz(self, rect):
+    tl1 = self.tl
+    tl2 = rect.tl
+    br1 = self.br
+    br2 = rect.br
+    top = float(self.tl.y)
+
+    left = float(tl1.x)
+    if left > float(tl2.x):
+      left = float(tl2.x)
+    bottom = float(br1.y)
+    if bottom < float(br2.y):
+      bottom = float(br2.y)
+    right = float(br1.x)
+    if right < float(br2.x):
+      right = float(br2.x)
+    self.tr = Point(right, top)
+    self.tl = Point(left, top)
+    self.br = Point(right, bottom)
+    self.bl = Point(left, bottom)
       
   def transform(self, matrix):
     r = Rectangle()
@@ -140,9 +162,16 @@ class Group:
     self.boundingrect = Rectangle()
     self.boundingrect.id = "r%s" % id
     
-  def add(self, rect):
+  # if merge is false, then only merge the new rectangle horizontally
+  # this helps compensate for connected lines
+  def add(self, rect, merge=True):
     self.shapes.append(rect)
-    self.boundingrect.merge(rect)
+    if merge:
+      self.boundingrect.merge(rect)
+    else:
+      self.boundingrect.mergehoriz(rect)
+    
+  
 
 class SVG:
   
@@ -184,10 +213,35 @@ class SVG:
     
   def getmatrix(self):
     if False == hasattr(self, "matrix"):
-      g = self.doc.xpath("/svg:svg/svg:g", namespaces=self.nss)[0]
-      t = g.get("transform").lstrip("matrix()").rstrip(")")
-      t = t.split(",")
-      self.matrix = numpy.matrix( [[float(t[0]),float(t[2]),float(t[4])],[float(t[1]),float(t[3]),float(t[5])],[0,0,1]])
+      g = self.doc.xpath("/svg:svg/svg:g", namespaces=self.nss)
+      if g:
+        t = g[0].get("transform")
+        if t:
+          transforms = t.split(" ")
+          fm = False
+          print transforms
+          for f in transforms:
+            if f.find("matrix") >= 0:
+              print "Found matrix"
+              m = f.lstrip("matrix(").rstrip(")")
+              m = m.split(",")
+              self.matrix = numpy.matrix( [[float(m[0]),float(m[2]),float(m[4])],[float(m[1]),float(m[3]),float(m[5])],[0,0,1]])
+              continue
+            if f.find("translate") >= 0:
+              print "Found translate"
+              l = f.lstrip("translate(").rstrip(")")
+              translate = l.split(",")
+              fm = True
+              continue
+            if f.find("scale") >= 0:
+              print "Found scale"
+              s = f.lstrip("scale(").rstrip(")")
+              scale = s.split(",")
+              continue
+          if fm == True:
+            self.matrix = numpy.matrix([[float(scale[0]),0,float(translate[0]),0],[0,float(scale[1]),float(translate[1])],[0,0,1]])
+        else:
+          self.matrix = numpy.matrix([[1,0,1],[0,1,1],[0,0,1]])
       print self.matrix
     return self.matrix
     
@@ -329,6 +383,7 @@ class Usage(Exception):
     self.msg = msg
 
 def extract_rectangle(polygon):
+  print polygon
   pair = polygon[0].split(',')
   left = float(pair[0])
   right = left
@@ -409,10 +464,12 @@ def get_lines(rectangles, result, overlap):
   group = Group("g%s" % rect.id)
   group.add(rect)
   for r in rectangles[1:]:
-    if group.boundingrect.verticaloverlap(r) > overlap:
+    if rect.verticaloverlap(r) > overlap:
       group.add(r)
     else:
-      remainder.append(r)
+    	remainder.append(r)
+    rect = r
+		
   result.append(group)
   if (len(remainder) > 0) & (len(remainder) < len(rectangles)):
     get_lines(remainder, result, overlap)
@@ -430,6 +487,13 @@ def get_words(rects, result):
   result.append(group)
   if (len(remainder) > 0) & (len(remainder) < len(rects)):
     get_words(remainder, result)
+    
+def absoluteCoords(coords, current):
+  pair = coords.split(",")
+  cpair = current.split(",")
+  pair[0] = str(float(pair[0]) + float(cpair[0]))
+  pair[1] = str(float(pair[1]) + float(cpair[1]))
+  return ",".join(pair)
 
 # compute areas
 # throw out outliers
@@ -452,6 +516,7 @@ def main(argv=None):
     print opts
     print args
     # option processing
+    image = None
     for option, value in opts:
       if option == "-v":
         verbose = True
@@ -474,11 +539,30 @@ def main(argv=None):
       path = pathdata.xpath("@d")[0].split(' ')
       index = 0
       polygon = []
+      current = ""
       for p in path:
+        if p == 'm':
+          if index == 0:
+            polygon.append(path[index + 1])
+            current = path[index + 1]
+          else:
+            current = absoluteCoords(path[index + 1], current)
+            polygon.append(current)
         if p == 'M':
           polygon.append(path[index + 1])
+          current = path[index + 1]
+        if p == 'l':
+          current = absoluteCoords(path[index + 1], current)
+          polygon.append(current)
         if p == 'L':
           polygon.append(path[index + 1])
+        if p == 'c':
+          current = absoluteCoords(path[index + 1], current)
+          polygon.append(current)
+          current = absoluteCoords(path[index + 2], current)
+          polygon.append(current)
+          current = absoluteCoords(path[index + 3], current)
+          polygon.append(current)
         if p == 'C':
           polygon.append(path[index + 1])
           polygon.append(path[index + 2])
@@ -500,7 +584,7 @@ def main(argv=None):
     #print areas
     #print rectangles
     
-    rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (2 *numpy.std(areas))), numpy.max(areas) - 1  )
+    rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (2 *numpy.std(areas))), numpy.max(areas) -1  ) # last instruction tosses out biggest area
     #rectangles = filter_rectangles(rectangles, (numpy.average(areas) - (10 * numpy.std(areas))), numpy.max(areas)  )
     rectangles = sort(rectangles, 'x')
     rectangles = sort(rectangles, 'y')
@@ -526,8 +610,9 @@ def main(argv=None):
       r = group.boundingrect.transform(s.getmatrix())
       r.id = group.id
       rects.append(r)
-    js = JS(s)
-    js.writejs("%s.js" % output, image, rects, lines)
+    if image:
+	    js = JS(s)
+	    js.writejs("%s.js" % output, image, rects, lines)
     
     #write SVG
     lines = groupsort(lines,'y')
@@ -540,8 +625,9 @@ def main(argv=None):
       #get_words(shapes, words)
       #for word in words:
       #  s.add_rectangle(word.boundingrect, 'green', '0.2')
-        
-    s.add_image(image)
+    
+    if image:
+    	s.add_image(image)
     f = open(output, 'w')
     f.write(etree.tostring(s.doc))
     f.close()
