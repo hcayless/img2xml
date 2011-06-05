@@ -8,7 +8,6 @@ if __name__ == "__main__":
     print "Hello World"
 
 import numpy
-    
 
 class Point:
   '''Defines a point.'''

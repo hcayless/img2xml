@@ -10,10 +10,11 @@ __date__ ="$Aug 30, 2010 9:57:10 PM$"
 
 import sys
 from lxml import etree
-import shapes
-import svg
 import math
 import numpy
+# img2xml code
+import img2xml.shapes
+import img2xml.svg
 
 # Constants
 # Depending on the handwriting style, assumptions about line height may
@@ -91,7 +92,7 @@ def detect_lines(counts, svg, h):
     id = "line%s" % idno
     idno = idno + 1
     # draw line-bounding rectangle
-    rect = shapes.Rectangle({'tr':(svg.getxmin() + svg.getwidth(),p - (h * line_height_above)),'tl':(svg.getxmin(),p - (h * line_height_above)),'br':(svg.getxmin() + svg.getwidth(),p + (h * line_height_below)),'bl':(svg.getxmin(),p + (h * line_height_below)),'id':id})
+    rect = img2xml.shapes.Rectangle({'tr':(svg.getxmin() + svg.getwidth(),p - (h * line_height_above)),'tl':(svg.getxmin(),p - (h * line_height_above)),'br':(svg.getxmin() + svg.getwidth(),p + (h * line_height_below)),'bl':(svg.getxmin(),p + (h * line_height_below)),'id':id})
     lines.append(rect)
 
   for line in lines:
@@ -123,14 +124,14 @@ def extract_rectangle(polygon):
   tl = (left, top)
   br = (right,bottom)
   bl = (left,bottom)
-  rectangle = shapes.Rectangle({'tr': tr, 'tl': tl, 'br': br, 'bl': bl})
+  rectangle = img2xml.shapes.Rectangle({'tr': tr, 'tl': tl, 'br': br, 'bl': bl})
   return rectangle
 
 def main():
   file = sys.argv[1]
   out = sys.argv[2]
   doc = etree.parse(file)
-  s = svg.SVG(doc)
+  s = img2xml.svg.SVG(doc)
   s.ungroup()
 
   polygons = s.analysepaths()
@@ -144,7 +145,6 @@ def main():
     rectangles.append(rect)
     areas.append(rect.area())
     heights.append(rect.height())
-
   lines = count_objects(rectangles, s, numpy.average(areas))
   s = detect_lines(lines, s, int(round(numpy.average(heights))))
   f = open(out, 'w')
