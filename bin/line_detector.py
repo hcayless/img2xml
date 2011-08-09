@@ -19,16 +19,18 @@ import img2xml.svg
 # Constants
 # Depending on the handwriting style, assumptions about line height may
 # need to be adjusted below.
-line_height_below = 3
-line_height_above = 2
+line_height_below = 5
+line_height_above = 3
+line_overlap = 2
 
 
 def count_objects(rectangles, svg, avg):
-  '''Returns a dictionary with counts of shapes per unit on the Y axis in the SVG.'''
+  '''Returns a dictionary with counts of shapes per unit on the Y axis in the SVG.
+  Shapes smaller than half the average shape area are excluded from the count.'''
   count = dict.fromkeys(range(svg.getymin(), svg.getymin() + svg.getheight()), 0)
   for r in rectangles[0:]:
     for p in range(int(r.tr.y), int(r.br.y)):
-      if (r.area() >= avg):
+      if (r.area() >= (avg / 2)):
         if p in count:
           count[p] = count[p] + 1
         else:
@@ -56,7 +58,7 @@ def detect_lines(counts, svg, h):
   while i < (numpy.max(counts.keys()) - (h + 1)):
     localavg = numpy.average(getvalues(range(i,i + h), counts))
     if up:
-      if localavg > avg:
+      if localavg >= avg:
         avg = localavg
       else:
         if avg > localavg + 0.1:
@@ -78,11 +80,16 @@ def detect_lines(counts, svg, h):
   rpeaks.append(peaks[0])
   for p in peaks:
     if i >= 2:  
-      if peaks[i - previous] < p - (h * line_height_below):
+      if peaks[i - previous] < p - (h * (line_height_below - line_overlap)):
         rpeaks.append(p)
         previous = 2
       else:
-        previous = 3
+        if numpy.average(getvalues(range(peaks[i], peaks[i] + h), counts)) >= numpy.average(getvalues(range(peaks[i - previous], peaks[i - previous] + h), counts)):
+          rpeaks.pop()
+          rpeaks.append(p)
+          previous = 2
+        else :
+          previous = 3
       i = i + 1
     else:
       i = i + 1
@@ -93,6 +100,7 @@ def detect_lines(counts, svg, h):
     idno = idno + 1
     # draw line-bounding rectangle
     rect = img2xml.shapes.Rectangle({'tr':(svg.getxmin() + svg.getwidth(),p - (h * line_height_above)),'tl':(svg.getxmin(),p - (h * line_height_above)),'br':(svg.getxmin() + svg.getwidth(),p + (h * line_height_below)),'bl':(svg.getxmin(),p + (h * line_height_below)),'id':id})
+    #rect = img2xml.shapes.Rectangle({'tr':(svg.getxmin() + svg.getwidth(),p),'tl':(svg.getxmin(),p),'br':(svg.getxmin() + svg.getwidth(),p+h),'bl':(svg.getxmin(),p+h),'id':id})
     lines.append(rect)
 
   for line in lines:
