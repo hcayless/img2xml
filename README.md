@@ -1,7 +1,7 @@
 img2xml
 ======
 
-img2xml is a toolchain for linking images of text to transcriptions and annotations. A working demo may be seen at (http://docsouth.unc.edu/dusenbery).
+img2xml is a toolchain for linking images of text to transcriptions and annotations. A working demo may be seen at (http://docsouth.unc.edu/dusenbery/journal).
 
 1) Source TIFFs may need to be pre-processed to removed dark margins, using select/fill in a standard image editor, such as Photoshop or the Gimp.  These processed TIFFs are converted to bitmaps, using ImageMagick's convert tool, with a BASH command like:
 	
